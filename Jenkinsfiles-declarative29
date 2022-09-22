@@ -1,0 +1,62 @@
+pipeline{
+  agent any 
+  tools {
+    maven "maven3.8.6"
+  }  
+  stages {
+    stage('1GetCode'){
+      steps{
+        sh "echo 'cloning the latest application version' "
+        git credentialsId: 'gitHubCredentials', url: 'https://github.com/piusdarl4/maven-web-application'
+      }
+    }
+    stage('3Test+Build'){
+      steps{
+        sh "echo 'running JUnit-test-cases' "
+        sh "echo 'testing must passed to create artifacts ' "
+        sh "mvn clean package"
+      }
+    }
+    stage('4CodeQuality'){
+      steps{
+        sh "echo 'Perfoming CodeQualityAnalysis' "
+        sh "mvn sonar:sonar"
+      }
+    } 
+    stage('5uploadNexus'){
+      steps{
+        sh "mvn deploy"
+      }
+    }
+    stage('8deploy2prod'){
+      steps{
+        deploy adapters: [tomcat9(credentialsId: 'tomcat-cre', path: '', url: 'http://3.99.146.198:8080/')], contextPath: null, war: 'target/*war'   }
+    }     
+  }
+post{
+    always{
+      emailext body: '''Hi Team, 
+
+Please check build status
+
+Thanks,
+PMC''', recipientProviders: [contributor(), developers()], subject: 'success', to: 'triple4limited@gmail.com'
+    }
+    success{
+      emailext body: '''Hi Team, 
+
+Good job build and deployment successful.
+
+Thanks,
+PMC''', recipientProviders: [contributor(), developers()], subject: 'success', to: 'triple4limited@gmail.com'
+    } 
+    failure{
+      emailext body: '''Hi Team, 
+
+Build failed. Please resolve issues
+
+Thanks,
+PMC''', recipientProviders: [contributor(), developers()], subject: 'success', to: 'triple4limited@gmail.com'
+    }
+  } 
+}
